@@ -4,6 +4,8 @@ import { AppService } from './app.service';
 import { ConfigModule } from "@nestjs/config";
 import { TerminusModule } from "@nestjs/terminus";
 import { HealthController } from "./health.controller.ts";
+import { ApiKeysService } from "./api-keys/api-keys.service.ts";
+import { ApiKeysController } from "./api-keys/api-keys.controller.ts";
 
 @Module({
   imports: [

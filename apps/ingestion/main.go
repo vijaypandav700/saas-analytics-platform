@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -34,6 +35,23 @@ func parseRedisAddr(url string) string {
 	return addr
 }
 
+func resolveApiKey(key string) (string, bool) {
+	body, _ := json.Marshal(map[string]string{"key": key})
+	resp, err := http.Post("http://localhost:4000/internal/api-keys/resolve", "application/json", bytes.NewReader(body))
+	if err != nil {
+		log.Println("resolve call failed:", err)
+		return "", false
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Valid bool   `json:"valid"`
+		OrgID string `json:"orgId"`
+	}
+	json.NewDecoder(resp.Body).Decode(&result)
+	return result.OrgID, result.Valid
+}
+
 func main() {
 	rdb = redis.NewClient(&redis.Options{Addr: parseRedisAddr(getenv("REDIS_URL", "redis://localhost:6379"))})
 
@@ -58,6 +76,13 @@ func handleEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	orgId, valid := resolveApiKey(apiKey)
+	if !valid {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "invalid api key"})
+		return
+	}
+
 	// rate limit: max 100 requests per key per 10 seconds
 	rlKey := "ratelimit:" + apiKey
 	count, err := rdb.Incr(ctx, rlKey).Result()
@@ -77,7 +102,7 @@ func handleEvents(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
 	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
 		Stream: eventsKey,
-		Values: map[string]interface{}{"apiKey": apiKey, "payload": string(body)},
+		Values: map[string]interface{}{"orgId": orgId, "apiKey": apiKey, "payload": string(body)},
 	}).Result()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
