@@ -1,17 +1,41 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
-func main() {
-	port := os.Getenv("INGESTION_PORT")
-	if port == "" {
-		port = "8080"
+var (
+	rdb        *redis.Client
+	ctx        = context.Background()
+	eventsKey  = getenv("EVENTS_QUEUE", "events:ingest")
+)
+
+func getenv(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
 	}
+	return fallback
+}
+
+func parseRedisAddr(url string) string {
+	// strips "redis://" prefix if present, go-redis wants host:port only
+	addr := url
+	if len(addr) > 8 && addr[:8] == "redis://" {
+		addr = addr[8:]
+	}
+	return addr
+}
+
+func main() {
+	rdb = redis.NewClient(&redis.Options{Addr: parseRedisAddr(getenv("REDIS_URL", "redis://localhost:6379"))})
 
 	mux := http.NewServeMux()
 
@@ -19,20 +43,47 @@ func main() {
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 
-	mux.HandleFunc("POST /v1/events", func(w http.ResponseWriter, r *http.Request) {
-		apiKey := r.Header.Get("Authorization")
-		if apiKey == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]string{"error": "missing api key"})
-			return
-		}
-		// real validation + queue publish comes in Checkpoint 6 & 7
-		w.WriteHeader(http.StatusAccepted)
-		json.NewEncoder(w).Encode(map[string]string{"status": "accepted"})
-	})
+	mux.HandleFunc("POST /v1/events", handleEvents)
 
+	port := getenv("INGESTION_PORT", "8080")
 	log.Printf("ingestion service listening on :%s", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
-		log.Fatal(err)
+	log.Fatal(http.ListenAndServe(":"+port, mux))
+}
+
+func handleEvents(w http.ResponseWriter, r *http.Request) {
+	apiKey := r.Header.Get("Authorization")
+	if apiKey == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "missing api key"})
+		return
 	}
+
+	// rate limit: max 100 requests per key per 10 seconds
+	rlKey := "ratelimit:" + apiKey
+	count, err := rdb.Incr(ctx, rlKey).Result()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if count == 1 {
+		rdb.Expire(ctx, rlKey, 10*time.Second)
+	}
+	if count > 100 {
+		w.WriteHeader(http.StatusTooManyRequests)
+		json.NewEncoder(w).Encode(map[string]string{"error": "rate limit exceeded"})
+		return
+	}
+
+	body, _ := io.ReadAll(r.Body)
+	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
+		Stream: eventsKey,
+		Values: map[string]interface{}{"apiKey": apiKey, "payload": string(body)},
+	}).Result()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(map[string]string{"status": "accepted"})
 }
