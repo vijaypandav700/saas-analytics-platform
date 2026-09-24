@@ -262,6 +262,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@app/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       ioredis:
         specifier: ^6.0.0
         version: 6.0.0(supports-color@8.1.1)

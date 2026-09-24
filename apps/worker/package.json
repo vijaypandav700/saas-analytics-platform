@@ -11,6 +11,7 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@app/database": "workspace:*",
     "ioredis": "^6.0.0"
   },
   "devDependencies": {
