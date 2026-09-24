@@ -61,4 +61,11 @@ async function processEvent(fields: string[]) {
   console.log(`saved event "${eventName}" for org ${orgId}`);
 }
 
+import { execSync } from "child_process";
+
+setInterval(() => {
+  console.log("running scheduled rollup...");
+  execSync("pnpm tsx src/rollup.ts", { stdio: "inherit" });
+}, 5 * 60 * 1000); // every 5 minutes
+
 main();
