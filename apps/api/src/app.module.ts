@@ -12,7 +12,7 @@ import { ApiKeysController } from "./api-keys/api-keys.controller.ts";
     ConfigModule.forRoot({ envFilePath: "../../.env" }),
     TerminusModule,
   ],
-  controllers: [AppController, HealthController],
-  providers: [AppService],
+  controllers: [AppController, HealthController, ApiKeysController],
+  providers: [AppService, ApiKeysService],
 })
 export class AppModule {}

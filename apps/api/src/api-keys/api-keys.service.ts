@@ -11,8 +11,6 @@ export class ApiKeysService {
     const keyHash = this.hash(fullKey);
 
     await db.insert(apiKeys).values({ orgId, keyHash, prefix });
-
-    // return the full key ONCE — it's never retrievable again after this
     return { key: fullKey, prefix };
   }
 
