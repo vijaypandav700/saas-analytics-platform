@@ -35,6 +35,21 @@ func parseRedisAddr(url string) string {
 	return addr
 }
 
+func checkUsage(orgId string) bool {
+	body, _ := json.Marshal(map[string]string{"orgId": orgId})
+	resp, err := http.Post("http://localhost:4000/internal/api-keys/check-usage", "application/json", bytes.NewReader(body))
+	if err != nil {
+		log.Println("usage check failed:", err)
+		return true // fail open — don't block ingestion if API is down
+	}
+	defer resp.Body.Close()
+	var result struct {
+		Allowed bool `json:"allowed"`
+	}
+	json.NewDecoder(resp.Body).Decode(&result)
+	return result.Allowed
+}
+
 func resolveApiKey(key string) (string, bool) {
 	body, _ := json.Marshal(map[string]string{"key": key})
 	resp, err := http.Post("http://localhost:4000/internal/api-keys/resolve", "application/json", bytes.NewReader(body))
@@ -80,6 +95,12 @@ func handleEvents(w http.ResponseWriter, r *http.Request) {
 	if !valid {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]string{"error": "invalid api key"})
+		return
+	}
+
+	if !checkUsage(orgId) {
+		w.WriteHeader(http.StatusPaymentRequired)
+		json.NewEncoder(w).Encode(map[string]string{"error": "monthly event cap reached, upgrade plan"})
 		return
 	}
 
