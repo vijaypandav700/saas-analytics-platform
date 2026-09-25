@@ -1,4 +1,5 @@
-import { Controller, Get } from "@nestjs/common";
+import { Controller, Get, Res } from "@nestjs/common";
+import type { Response } from "express";
 import { HealthCheckService, HealthCheck } from "@nestjs/terminus";
 import * as client from "prom-client";
 
@@ -18,12 +19,12 @@ export class HealthController {
   @Get("readyz")
   @HealthCheck()
   readiness() {
-    // DB + Redis checks get added here in Checkpoint 7/8 once those clients exist
     return { status: "ok" };
   }
 
   @Get("metrics")
-  async metrics() {
-    return register.metrics();
+  async metrics(@Res() res: Response) {
+    res.set("Content-Type", register.contentType);
+    res.send(await register.metrics());
   }
 }
