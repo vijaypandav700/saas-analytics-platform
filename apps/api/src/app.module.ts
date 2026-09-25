@@ -12,6 +12,8 @@ import { AuthController } from "./auth/auth.controller.ts";
 import { AuthGuard } from "./auth/auth.guard.ts";
 import { OrgsService } from "./orgs/orgs.service.ts";
 import { OrgsController } from "./orgs/orgs.controller.ts";
+import { BillingService } from "./billing/billing.service.ts";
+import { BillingController } from "./billing/billing.controller.ts";
 
 @Module({
   imports: [
@@ -25,7 +27,15 @@ import { OrgsController } from "./orgs/orgs.controller.ts";
     ApiKeysController,
     AuthController,
     OrgsController,
+    BillingController,
   ],
-  providers: [AppService, ApiKeysService, AuthService, AuthGuard, OrgsService],
+  providers: [
+    AppService,
+    ApiKeysService,
+    AuthService,
+    AuthGuard,
+    OrgsService,
+    BillingService,
+  ],
 })
 export class AppModule {}
