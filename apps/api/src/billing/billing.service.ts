@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import Stripe from "stripe";
+import { Injectable, NotFoundException } from '@nestjs/common';
+import Stripe from 'stripe';
 import {
   db,
   organizations,
@@ -7,7 +7,7 @@ import {
   eventUsage,
   eq,
   and,
-} from "@app/database";
+} from '@app/database';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 const FREE_PLAN_MONTHLY_CAP = 10_000;
@@ -19,7 +19,7 @@ export class BillingService {
       .select()
       .from(organizations)
       .where(eq(organizations.id, orgId));
-    if (!org) throw new NotFoundException("org not found");
+    if (!org) throw new NotFoundException('org not found');
 
     let customerId = org.stripeCustomerId;
     if (!customerId) {
@@ -33,10 +33,10 @@ export class BillingService {
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      mode: "subscription",
+      mode: 'subscription',
       line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
-      success_url: "http://localhost:3000/billing?status=success",
-      cancel_url: "http://localhost:3000/billing?status=cancelled",
+      success_url: 'http://localhost:3000/billing?status=success',
+      cancel_url: 'http://localhost:3000/billing?status=cancelled',
     });
 
     return { url: session.url };
@@ -50,32 +50,30 @@ export class BillingService {
     );
 
     try {
-      await db
-        .insert(webhookEvents)
-        .values({
-          stripeEventId: event.id,
-          type: event.type,
-          payload: event as any,
-        });
+      await db.insert(webhookEvents).values({
+        stripeEventId: event.id,
+        type: event.type,
+        payload: event as any,
+      });
     } catch {
       return { received: true, duplicate: true }; // already processed, Stripe retry — safe no-op
     }
 
-    if (event.type === "checkout.session.completed") {
+    if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
       const customerId = session.customer as string;
       await db
         .update(organizations)
-        .set({ plan: "paid" })
+        .set({ plan: 'paid' })
         .where(eq(organizations.stripeCustomerId, customerId));
     }
 
-    if (event.type === "customer.subscription.deleted") {
+    if (event.type === 'customer.subscription.deleted') {
       const sub = event.data.object as Stripe.Subscription;
       const customerId = sub.customer as string;
       await db
         .update(organizations)
-        .set({ plan: "free" })
+        .set({ plan: 'free' })
         .where(eq(organizations.stripeCustomerId, customerId));
     }
 
@@ -87,7 +85,7 @@ export class BillingService {
       .select()
       .from(organizations)
       .where(eq(organizations.id, orgId));
-    if (org?.plan !== "free") return true; // paid = no cap
+    if (org?.plan !== 'free') return true; // paid = no cap
 
     const period = new Date().toISOString().slice(0, 7);
     const [usage] = await db
@@ -96,5 +94,26 @@ export class BillingService {
       .where(and(eq(eventUsage.orgId, orgId), eq(eventUsage.period, period)));
 
     return (usage?.eventsIngested ?? 0) < FREE_PLAN_MONTHLY_CAP;
+  }
+
+  async getUsage(orgId: string) {
+    const [org] = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.id, orgId));
+    if (!org) throw new NotFoundException('org not found');
+
+    const period = new Date().toISOString().slice(0, 7);
+    const [usage] = await db
+      .select()
+      .from(eventUsage)
+      .where(and(eq(eventUsage.orgId, orgId), eq(eventUsage.period, period)));
+
+    return {
+      plan: org.plan,
+      eventsIngested: usage?.eventsIngested ?? 0,
+      cap: org.plan === 'free' ? FREE_PLAN_MONTHLY_CAP : null,
+      period,
+    };
   }
 }
