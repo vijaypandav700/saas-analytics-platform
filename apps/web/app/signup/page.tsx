@@ -29,8 +29,8 @@ export default function SignupPage() {
       localStorage.setItem("accessToken", data.accessToken);
       localStorage.setItem("refreshToken", data.refreshToken);
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message || "signup failed");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "signup failed");
     }
   }
 

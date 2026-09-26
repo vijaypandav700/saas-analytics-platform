@@ -33,8 +33,8 @@ export default function BillingPage({
         method: "POST",
       });
       window.location.href = data.url;
-    } catch (err: any) {
-      setError(err.message || "failed to start checkout");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "failed to start checkout");
       setLoadingCheckout(false);
     }
   }

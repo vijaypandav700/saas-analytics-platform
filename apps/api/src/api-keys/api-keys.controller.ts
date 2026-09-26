@@ -4,7 +4,6 @@ import {
   Get,
   Delete,
   Body,
-  Req,
   Param,
   UseGuards,
 } from '@nestjs/common';

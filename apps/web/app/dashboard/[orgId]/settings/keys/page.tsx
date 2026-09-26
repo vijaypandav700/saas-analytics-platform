@@ -24,13 +24,14 @@ export default function ApiKeysPage({
     try {
       const data = await apiFetch(`/orgs/${orgId}/api-keys`);
       setKeys(data);
-    } catch (err: any) {
-      setError(err.message || "failed to load keys");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "failed to load keys");
     }
   }
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleCreate() {
@@ -41,8 +42,8 @@ export default function ApiKeysPage({
       });
       setNewKey(data.key); // shown once — never retrievable again after this
       await load();
-    } catch (err: any) {
-      setError(err.message || "failed to create key");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "failed to create key");
     }
   }
 
@@ -59,8 +60,8 @@ export default function ApiKeysPage({
         method: "DELETE",
       });
       await load();
-    } catch (err: any) {
-      setError(err.message || "failed to revoke key");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "failed to revoke key");
     }
   }
 
@@ -77,9 +78,11 @@ export default function ApiKeysPage({
             marginBottom: "1rem",
           }}
         >
-          <strong>Copy this now — you won't see it again:</strong>
+          <strong>Copy this now — you won&apos;t see it again:</strong>{" "}
           <pre>{newKey}</pre>
-          <button onClick={() => setNewKey(null)}>I've copied it</button>
+          <button onClick={() => setNewKey(null)}>
+            I&apos;ve copied it
+          </button>{" "}
         </div>
       )}
 
