@@ -3,8 +3,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 
+type Org = {
+  id: string;
+  name: string;
+  plan: string;
+};
+
 export default function DashboardPage() {
-  const [orgs, setOrgs] = useState<any[]>([]);
+  const [orgs, setOrgs] = useState<Org[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -12,8 +18,10 @@ export default function DashboardPage() {
       router.push("/login");
       return;
     }
-    apiFetch("/orgs").then(setOrgs).catch(() => router.push("/login"));
-  }, []);
+    apiFetch("/orgs")
+      .then(setOrgs)
+      .catch(() => router.push("/login"));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="max-w-2xl mx-auto mt-20">
