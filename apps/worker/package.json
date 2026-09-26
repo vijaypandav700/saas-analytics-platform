@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"no tests yet\" && exit 0",
-    "rollup": "tsx src/rollup.ts"
+    "rollup": "tsx src/rollup.ts",
+    "dev": "tsx watch src/index.ts"
   },
   "keywords": [],
   "author": "",

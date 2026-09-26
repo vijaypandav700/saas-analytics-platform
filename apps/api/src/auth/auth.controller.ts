@@ -1,22 +1,26 @@
-import { Controller, Post, Body } from "@nestjs/common";
-import { AuthService } from "./auth.service.ts";
+import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { AuthService } from './auth.service.ts';
+import { SignupThrottleGuard } from './signup-throttle.guard.ts';
 
-@Controller("auth")
+@Controller('auth')
 export class AuthController {
   constructor(private auth: AuthService) {}
 
-  @Post("register")
-  register(@Body() body: { email: string; password: string }) {
-    return this.auth.register(body.email, body.password);
+  @UseGuards(SignupThrottleGuard)
+  @Post('register')
+  async register(
+    @Body() body: { email: string; password: string; orgName: string },
+  ) {
+    return this.auth.register(body.email, body.password, body.orgName);
   }
 
-  @Post("login")
+  @Post('login')
   login(@Body() body: { email: string; password: string }) {
     return this.auth.login(body.email, body.password);
   }
 
-  @Post("refresh")
-  refresh(@Body("refreshToken") token: string) {
+  @Post('refresh')
+  refresh(@Body('refreshToken') token: string) {
     return this.auth.refresh(token);
   }
 }

@@ -8,15 +8,16 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 )
 
 var (
-	rdb        *redis.Client
-	ctx        = context.Background()
-	eventsKey  = getenv("EVENTS_QUEUE", "events:ingest")
+	rdb       *redis.Client
+	ctx       = context.Background()
+	eventsKey = getenv("EVENTS_QUEUE", "events:ingest")
 )
 
 func getenv(key, fallback string) string {
@@ -84,12 +85,13 @@ func main() {
 }
 
 func handleEvents(w http.ResponseWriter, r *http.Request) {
-	apiKey := r.Header.Get("Authorization")
-	if apiKey == "" {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]string{"error": "missing api key"})
 		return
 	}
+	apiKey := strings.TrimPrefix(authHeader, "Bearer ")
 
 	orgId, valid := resolveApiKey(apiKey)
 	if !valid {
