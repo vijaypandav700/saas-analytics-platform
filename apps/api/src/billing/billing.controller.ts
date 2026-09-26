@@ -22,7 +22,7 @@ export class BillingController {
         req.headers["stripe-signature"] as string,
       );
       res.status(200).json(result);
-    } catch (err) {
+    } catch {
       res.status(400).json({ error: "webhook signature verification failed" });
     }
   }
