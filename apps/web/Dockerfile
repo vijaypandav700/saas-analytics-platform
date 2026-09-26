@@ -4,6 +4,8 @@ COPY apps/web ./apps/web
 WORKDIR /app/apps/web
 RUN corepack enable && corepack prepare pnpm@latest --activate
 RUN pnpm install --frozen-lockfile
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN pnpm build
 
 FROM node:24-alpine AS runner
