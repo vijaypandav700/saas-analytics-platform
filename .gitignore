@@ -24,3 +24,5 @@ coverage/
 
 # data
 /data/
+minikube-linux-amd64
+*.tar.gz
